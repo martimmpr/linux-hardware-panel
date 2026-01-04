@@ -6,7 +6,7 @@ Hardware Panel is a powerful system monitoring and hardware control application 
 
 Compatible with all major Linux distributions including Fedora, Ubuntu, Debian, Arch Linux, and others.
 
-![Hardware Panel Screenshot](https://raw.githubusercontent.com/martimmpr/linux-hardware-panel/main/screenshot.png)
+![Hardware Panel Screenshot](screenshot.png)
 
 ## Features
 
