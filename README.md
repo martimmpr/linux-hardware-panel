@@ -6,6 +6,8 @@ Hardware Panel is a powerful system monitoring and hardware control application 
 
 Compatible with all major Linux distributions including Fedora, Ubuntu, Debian, Arch Linux, and others.
 
+![Hardware Panel Screenshot](https://raw.githubusercontent.com/martimmpr/linux-hardware-panel/main/screenshot.png)
+
 ## Features
 
 ### Real-Time Monitoring
@@ -30,7 +32,38 @@ Compatible with all major Linux distributions including Fedora, Ubuntu, Debian, 
 
 ## Installation
 
-For detailed installation instructions, see [INSTALL.md](INSTALL.md).
+### Quick Start
+
+**1. Install system dependencies:**
+
+```bash
+# Fedora
+sudo dnf install python3-pip lm_sensors kernel-tools
+
+# Ubuntu/Debian
+sudo apt install python3-pip lm-sensors linux-cpupower
+
+# Arch Linux
+sudo pacman -S python-pip lm_sensors cpupower
+```
+
+**2. Install Hardware Panel:**
+
+```bash
+sudo pip install hardware-panel
+```
+
+**3. Run the application:**
+
+```bash
+sudo hardware-panel
+# or
+sudo hwpanel
+```
+
+> **Note:** Root privileges are required for power profile management.
+
+For detailed installation instructions and troubleshooting, see [INSTALL.md](INSTALL.md).
 
 ## License
 

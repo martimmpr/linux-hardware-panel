@@ -4,6 +4,8 @@
 
 ### System Dependencies
 
+These packages are required for hardware monitoring and power profile management:
+
 #### Fedora
 ```bash
 sudo dnf install python3 python3-pip lm_sensors kernel-tools
@@ -19,41 +21,66 @@ sudo apt install python3 python3-pip lm-sensors linux-cpupower
 sudo pacman -S python python-pip lm_sensors cpupower
 ```
 
-### Python Dependencies
+**What each package does:**
+- `python3-pip` / `python-pip`: Python package manager
+- `lm_sensors` / `lm-sensors`: Hardware temperature monitoring
+- `kernel-tools` / `linux-cpupower` / `cpupower`: Power profile management
 
-Install Python packages:
+## Installation
+
+### Option 1: Install from PyPI (Recommended)
+
+Install the latest stable version directly from PyPI:
+
+```bash
+sudo pip install hardware-panel
+```
+
+This will automatically install Python dependencies (PyQt5, psutil, pyqtgraph) system-wide.
+
+> **Note:** System-wide installation is required for `sudo` commands to work properly.
+
+### Option 2: Install from Source
+
+**A) Clone and install:**
+
+```bash
+# Clone the repository
+git clone https://github.com/martimmpr/linux-hardware-panel.git
+cd linux-hardware-panel
+
+# Install system-wide
+sudo pip install .
+```
+
+**B) Install in development mode (for contributors):**
+
+```bash
+# Install in editable mode (user installation)
+pip install -e .
+
+# Changes to source files will be reflected immediately
+# Note: Run with full path: sudo ~/.local/bin/hardware-panel
+```
+
+**C) Install Python dependencies only:**
+
 ```bash
 pip install -r requirements.txt
 ```
 
-Or install individually:
-```bash
-pip install PyQt5 psutil pyqtgraph
-```
-
-## Installation
-
-### Option 1: Install with pip (Recommended)
+### Option 3: Run directly from source (without installing)
 
 ```bash
-# Install in user mode
-pip install --user .
+# Clone the repository
+git clone https://github.com/martimmpr/linux-hardware-panel.git
+cd linux-hardware-panel
 
-# Or install system-wide (requires sudo)
-sudo pip install .
-```
+# Install Python dependencies
+pip install -r requirements.txt
 
-### Option 2: Run directly from source
-
-```bash
-# Make executable
-chmod +x hardware_panel.py
-
-# Run with Python
-python3 hardware_panel.py
-
-# Or run directly
-./hardware_panel.py
+# Run directly
+sudo python3 hardware_panel.py
 ```
 
 ## GPU Support

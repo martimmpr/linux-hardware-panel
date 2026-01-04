@@ -415,7 +415,15 @@ class HardwarePanelApp(QMainWindow):
         values_layout.setSpacing(8)
         values_layout.setContentsMargins(5, 5, 5, 5)
         
-        icon_dir = os.path.join(os.path.dirname(__file__), 'icons')
+        # Try to find icons directory (works for both installed and development)
+        icon_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons')
+        if not os.path.exists(icon_dir):
+            # Fallback for installed package
+            import sys
+            if hasattr(sys, '_MEIPASS'):  # PyInstaller
+                icon_dir = os.path.join(sys._MEIPASS, 'icons')
+            else:  # pip install
+                icon_dir = os.path.join(os.path.dirname(sys.modules[__name__].__file__), 'icons')
         
         # Helper function to create value row
         def create_value_row(icon_name, text_color):
@@ -757,7 +765,16 @@ class HardwarePanelApp(QMainWindow):
         title_layout.addWidget(title_label)
         
         # Help icon with tooltip
-        icon_dir = os.path.join(os.path.dirname(__file__), 'icons')
+        # Try to find icons directory (works for both installed and development)
+        icon_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons')
+        if not os.path.exists(icon_dir):
+            # Fallback for installed package
+            import sys
+            if hasattr(sys, '_MEIPASS'):  # PyInstaller
+                icon_dir = os.path.join(sys._MEIPASS, 'icons')
+            else:  # pip install
+                icon_dir = os.path.join(os.path.dirname(sys.modules[__name__].__file__), 'icons')
+        
         help_btn = QPushButton()
         help_icon_path = os.path.join(icon_dir, 'help.svg')
         if os.path.exists(help_icon_path):
