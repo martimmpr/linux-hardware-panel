@@ -511,7 +511,7 @@ class HardwarePanelApp(QMainWindow):
         # CPU Graph (Temperature + Usage)
         self.cpu_graph = pg.PlotWidget(title="CPU")
         self.cpu_graph.setBackground('#1a1a1a')
-        self.cpu_graph.setMouseEnabled(x=True, y=False)
+        self.cpu_graph.setMouseEnabled(x=False, y=False)
         self.cpu_graph.hideButtons()
         self.cpu_graph.setMenuEnabled(False)
         self.cpu_graph.setLabel('left', 'Temperature (°C)', color='#FF6B6B')
@@ -558,7 +558,7 @@ class HardwarePanelApp(QMainWindow):
         # GPU Graph (Temperature + Usage)
         self.gpu_graph = pg.PlotWidget(title="GPU")
         self.gpu_graph.setBackground('#1a1a1a')
-        self.gpu_graph.setMouseEnabled(x=True, y=False)
+        self.gpu_graph.setMouseEnabled(x=False, y=False)
         self.gpu_graph.hideButtons()
         self.gpu_graph.setMenuEnabled(False)
         self.gpu_graph.setLabel('left', 'Temperature (°C)', color='#FF6B6B')
@@ -614,15 +614,17 @@ class HardwarePanelApp(QMainWindow):
         # RAM Graph (RAM Usage + Swap Usage)
         self.ram_graph = pg.PlotWidget(title="Memory")
         self.ram_graph.setBackground('#1a1a1a')
-        self.ram_graph.setMouseEnabled(x=True, y=False)
+        self.ram_graph.setMouseEnabled(x=False, y=False)
         self.ram_graph.hideButtons()
         self.ram_graph.setMenuEnabled(False)
-        self.ram_graph.setLabel('left', 'Usage (%)')
+        self.ram_graph.setLabel('left', 'RAM Usage (%)', color='#51CF66')
+        self.ram_graph.setLabel('right', 'Swap Usage (%)', color='#FFA94D')
         self.ram_graph.setLabel('bottom', 'Time (seconds)')
         self.ram_graph.setXRange(0, 60, padding=0)
         self.ram_graph.setYRange(0, 100, padding=0)
         self.ram_graph.getAxis('left').setStyle(autoExpandTextSpace=False)
-        self.ram_graph.getAxis('bottom').setStyle(autoExpandTextSpace=True)
+        self.ram_graph.getAxis('right').setStyle(showValues=True, autoExpandTextSpace=False)
+        self.ram_graph.showAxis('right')
         self.ram_graph.getViewBox().setLimits(xMin=0, xMax=60, yMin=0, yMax=100)
         self.ram_graph.getViewBox().setAutoVisible(y=False)
         
@@ -637,8 +639,19 @@ class HardwarePanelApp(QMainWindow):
         self.ram_label.setVisible(False)
         self.ram_graph.addItem(self.ram_label)
         
+        # Create dual axis for RAM
         self.ram_usage_curve = self.ram_graph.plot(pen=pg.mkPen(color='#51CF66', width=2))
-        self.swap_usage_curve = self.ram_graph.plot(pen=pg.mkPen(color='#FFA94D', width=2))
+        
+        # Second Y-axis for Swap usage
+        self.swap_usage_viewbox = pg.ViewBox()
+        self.ram_graph.scene().addItem(self.swap_usage_viewbox)
+        self.ram_graph.getAxis('right').linkToView(self.swap_usage_viewbox)
+        self.swap_usage_viewbox.setXLink(self.ram_graph)
+        self.swap_usage_viewbox.setMouseEnabled(x=False, y=False)
+        self.swap_usage_viewbox.setYRange(0, 100, padding=0)
+        self.swap_usage_viewbox.setLimits(yMin=0, yMax=100)
+        self.swap_usage_curve = pg.PlotCurveItem(pen=pg.mkPen(color='#FFA94D', width=2))
+        self.swap_usage_viewbox.addItem(self.swap_usage_curve)
         
         # Connect mouse move event for RAM
         self.ram_proxy = pg.SignalProxy(self.ram_graph.scene().sigMouseMoved, rateLimit=60, slot=lambda evt: self.mouseMoved(evt, 'ram'))
@@ -648,7 +661,7 @@ class HardwarePanelApp(QMainWindow):
         # Disk Graph (Temperature + Usage)
         self.disk_graph = pg.PlotWidget(title="Disk")
         self.disk_graph.setBackground('#1a1a1a')
-        self.disk_graph.setMouseEnabled(x=True, y=False)
+        self.disk_graph.setMouseEnabled(x=False, y=False)
         self.disk_graph.hideButtons()
         self.disk_graph.setMenuEnabled(False)
         self.disk_graph.setLabel('left', 'Temperature (°C)', color='#FF6B6B')
@@ -695,19 +708,18 @@ class HardwarePanelApp(QMainWindow):
         # Network Graph (Download + Upload)
         self.net_graph = pg.PlotWidget(title="Network")
         self.net_graph.setBackground('#1a1a1a')
-        self.net_graph.setMouseEnabled(x=True, y=False)
+        self.net_graph.setMouseEnabled(x=False, y=False)
         self.net_graph.hideButtons()
         self.net_graph.setMenuEnabled(False)
-        self.net_graph.setLabel('left', 'Speed (MB/s)')
+        self.net_graph.setLabel('left', 'Download (MB/s)', color='#339AF0')
+        self.net_graph.setLabel('right', 'Upload (MB/s)', color='#FFA94D')
         self.net_graph.setLabel('bottom', 'Time (seconds)')
         self.net_graph.setXRange(0, 60, padding=0)
         self.net_graph.getAxis('left').setStyle(autoExpandTextSpace=False)
-        self.net_graph.getAxis('bottom').setStyle(autoExpandTextSpace=True)
+        self.net_graph.getAxis('right').setStyle(showValues=True, autoExpandTextSpace=False)
+        self.net_graph.showAxis('right')
         self.net_graph.getViewBox().setLimits(xMin=0, xMax=60, yMin=0)
         self.net_graph.getViewBox().setAutoVisible(y=True)
-        self.net_graph.getViewBox().enableAutoRange(axis=pg.ViewBox.YAxis, enable=True)
-        self.net_graph.getViewBox().setAutoVisible(y=1.0)
-        self.net_graph.disableAutoRange()
         
         # Add crosshair
         self.net_vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen(color='#ADB5BD', width=1, style=Qt.DashLine))
@@ -720,8 +732,19 @@ class HardwarePanelApp(QMainWindow):
         self.net_label.setVisible(False)
         self.net_graph.addItem(self.net_label)
         
-        self.net_download_curve = self.net_graph.plot(pen=pg.mkPen(color='#339AF0', width=2), name='Download')
-        self.net_upload_curve = self.net_graph.plot(pen=pg.mkPen(color='#FFA94D', width=2), name='Upload')
+        # Create dual axis for Network
+        self.net_download_curve = self.net_graph.plot(pen=pg.mkPen(color='#339AF0', width=2))
+        
+        # Second Y-axis for Upload
+        self.net_upload_viewbox = pg.ViewBox()
+        self.net_graph.scene().addItem(self.net_upload_viewbox)
+        self.net_graph.getAxis('right').linkToView(self.net_upload_viewbox)
+        self.net_upload_viewbox.setXLink(self.net_graph)
+        self.net_upload_viewbox.setMouseEnabled(x=False, y=False)
+        self.net_upload_viewbox.setLimits(yMin=0)
+        self.net_upload_viewbox.setAutoVisible(y=True)
+        self.net_upload_curve = pg.PlotCurveItem(pen=pg.mkPen(color='#FFA94D', width=2))
+        self.net_upload_viewbox.addItem(self.net_upload_curve)
         
         # Connect mouse move event for Network
         self.net_proxy = pg.SignalProxy(self.net_graph.scene().sigMouseMoved, rateLimit=60, slot=lambda evt: self.mouseMoved(evt, 'net'))
@@ -747,12 +770,24 @@ class HardwarePanelApp(QMainWindow):
             self.disk_usage_viewbox.setGeometry(self.disk_graph.getViewBox().sceneBoundingRect())
             self.disk_usage_viewbox.linkedViewChanged(self.disk_graph.getViewBox(), self.disk_usage_viewbox.XAxis)
         
+        def updateRAMViews():
+            self.swap_usage_viewbox.setGeometry(self.ram_graph.getViewBox().sceneBoundingRect())
+            self.swap_usage_viewbox.linkedViewChanged(self.ram_graph.getViewBox(), self.swap_usage_viewbox.XAxis)
+        
+        def updateNetViews():
+            self.net_upload_viewbox.setGeometry(self.net_graph.getViewBox().sceneBoundingRect())
+            self.net_upload_viewbox.linkedViewChanged(self.net_graph.getViewBox(), self.net_upload_viewbox.XAxis)
+        
         updateCPUViews()
         updateGPUViews()
         updateDiskViews()
+        updateRAMViews()
+        updateNetViews()
         self.cpu_graph.getViewBox().sigResized.connect(updateCPUViews)
         self.gpu_graph.getViewBox().sigResized.connect(updateGPUViews)
         self.disk_graph.getViewBox().sigResized.connect(updateDiskViews)
+        self.ram_graph.getViewBox().sigResized.connect(updateRAMViews)
+        self.net_graph.getViewBox().sigResized.connect(updateNetViews)
     
     def create_power_profile_section(self, parent_layout):
         """Create power profile section with active state buttons"""
@@ -1021,7 +1056,19 @@ class HardwarePanelApp(QMainWindow):
                     timestamp = self.hardware_monitor.timestamp_history[index].strftime('%H:%M:%S') if index < len(self.hardware_monitor.timestamp_history) else 'N/A'
                     download = self.hardware_monitor.net_download_history[index]
                     upload = self.hardware_monitor.net_upload_history[index]
-                    self.net_label.setText(f"Time: {timestamp}\nDownload: {download:.2f} MB/s\nUpload: {upload:.2f} MB/s")
+                    
+                    # Format with appropriate unit based on value
+                    if download < 1:
+                        download_str = f"{download * 1024:.2f} KB/s"
+                    else:
+                        download_str = f"{download:.2f} MB/s"
+                    
+                    if upload < 1:
+                        upload_str = f"{upload * 1024:.2f} KB/s"
+                    else:
+                        upload_str = f"{upload:.2f} MB/s"
+                    
+                    self.net_label.setText(f"Time: {timestamp}\nDownload: {download_str}\nUpload: {upload_str}")
                     self.net_label.setPos(mousePoint.x(), mousePoint.y())
             else:
                 self.net_vline.setVisible(False)
@@ -1158,24 +1205,47 @@ class HardwarePanelApp(QMainWindow):
         self.gpu_temp_curve.setData(list(self.hardware_monitor.gpu_temp_history))
         self.gpu_usage_curve.setData(list(range(len(self.hardware_monitor.gpu_usage_history))), list(self.hardware_monitor.gpu_usage_history))
         
-        # Update RAM graph (RAM + Swap)
+        # Update RAM graph (dual axis with RAM and Swap)
         self.ram_usage_curve.setData(list(self.hardware_monitor.ram_usage_history))
-        self.swap_usage_curve.setData(list(self.hardware_monitor.swap_usage_history))
+        self.swap_usage_curve.setData(list(range(len(self.hardware_monitor.swap_usage_history))), list(self.hardware_monitor.swap_usage_history))
         
         # Update Disk graph (dual axis with temperature and usage)
         self.disk_temp_curve.setData(list(self.hardware_monitor.disk_temp_history))
         self.disk_usage_curve.setData(list(range(len(self.hardware_monitor.disk_usage_history))), list(self.hardware_monitor.disk_usage_history))
         
-        # Update Network graph (download + upload)
-        self.net_download_curve.setData(list(self.hardware_monitor.net_download_history))
-        self.net_upload_curve.setData(list(self.hardware_monitor.net_upload_history))
-        
-        # Auto-scale Y axis for network graph based on data
+        # Update Network graph with dynamic KB/s or MB/s scale
         if self.hardware_monitor.net_download_history or self.hardware_monitor.net_upload_history:
             max_download = max(self.hardware_monitor.net_download_history) if self.hardware_monitor.net_download_history else 0
             max_upload = max(self.hardware_monitor.net_upload_history) if self.hardware_monitor.net_upload_history else 0
-            max_speed = max(max_download, max_upload, 1)  # At least 1 MB/s
-            self.net_graph.setYRange(0, max_speed * 1.1, padding=0)  # 10% padding on top
+            max_speed = max(max_download, max_upload)
+            
+            # Use KB/s if max speed is less than 1 MB/s, otherwise use MB/s
+            if max_speed < 1:
+                # Convert to KB/s
+                download_data = [d * 1024 for d in self.hardware_monitor.net_download_history]
+                upload_data = [u * 1024 for u in self.hardware_monitor.net_upload_history]
+                max_speed_download = max(download_data) if download_data else 1
+                max_speed_upload = max(upload_data) if upload_data else 1
+                
+                self.net_download_curve.setData(download_data)
+                self.net_upload_curve.setData(list(range(len(upload_data))), upload_data)
+                
+                self.net_graph.setLabel('left', 'Download (KB/s)', color='#339AF0')
+                self.net_graph.setLabel('right', 'Upload (KB/s)', color='#FFA94D')
+                self.net_graph.setYRange(0, max_speed_download * 1.1, padding=0)
+                self.net_upload_viewbox.setYRange(0, max_speed_upload * 1.1, padding=0)
+            else:
+                # Use MB/s
+                self.net_download_curve.setData(list(self.hardware_monitor.net_download_history))
+                self.net_upload_curve.setData(list(range(len(self.hardware_monitor.net_upload_history))), list(self.hardware_monitor.net_upload_history))
+                
+                max_speed_download = max(max_download, 1)
+                max_speed_upload = max(max_upload, 1)
+                
+                self.net_graph.setLabel('left', 'Download (MB/s)', color='#339AF0')
+                self.net_graph.setLabel('right', 'Upload (MB/s)', color='#FFA94D')
+                self.net_graph.setYRange(0, max_speed_download * 1.1, padding=0)
+                self.net_upload_viewbox.setYRange(0, max_speed_upload * 1.1, padding=0)
         
         # Auto power management
         self.power_manager.auto_switch_profile(cpu_usage, cpu_temp)

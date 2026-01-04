@@ -1,5 +1,12 @@
 # Change Log
 
+## [1.0.3] - 04-01-2026
+
+### Changed
+- Memory graph now uses dual-axis display: RAM usage (left axis, green) and Swap usage (right axis, orange)
+- Network graph now uses dual-axis display: Download speed (left axis, blue) and Upload speed (right axis, orange) and dynamically switches between KB/s and MB/s scales based on traffic speed
+- Disabled zoom on all graphs to keep the time axis fixed at 60 seconds
+
 ## [1.0.2] - 04-01-2026
 
 ### Fixed
