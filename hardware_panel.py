@@ -418,12 +418,16 @@ class HardwarePanelApp(QMainWindow):
         # Try to find icons directory (works for both installed and development)
         icon_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons')
         if not os.path.exists(icon_dir):
-            # Fallback for installed package
-            import sys
-            if hasattr(sys, '_MEIPASS'):  # PyInstaller
-                icon_dir = os.path.join(sys._MEIPASS, 'icons')
-            else:  # pip install
-                icon_dir = os.path.join(os.path.dirname(sys.modules[__name__].__file__), 'icons')
+            # Fallback for system-wide installation
+            potential_paths = [
+                '/usr/share/hardware-panel/icons',
+                '/usr/local/share/hardware-panel/icons',
+                os.path.expanduser('~/.local/share/hardware-panel/icons'),
+            ]
+            for path in potential_paths:
+                if os.path.exists(path):
+                    icon_dir = path
+                    break
         
         # Helper function to create value row
         def create_value_row(icon_name, text_color):
@@ -768,12 +772,16 @@ class HardwarePanelApp(QMainWindow):
         # Try to find icons directory (works for both installed and development)
         icon_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons')
         if not os.path.exists(icon_dir):
-            # Fallback for installed package
-            import sys
-            if hasattr(sys, '_MEIPASS'):  # PyInstaller
-                icon_dir = os.path.join(sys._MEIPASS, 'icons')
-            else:  # pip install
-                icon_dir = os.path.join(os.path.dirname(sys.modules[__name__].__file__), 'icons')
+            # Fallback for system-wide installation
+            potential_paths = [
+                '/usr/share/hardware-panel/icons',
+                '/usr/local/share/hardware-panel/icons',
+                os.path.expanduser('~/.local/share/hardware-panel/icons'),
+            ]
+            for path in potential_paths:
+                if os.path.exists(path):
+                    icon_dir = path
+                    break
         
         help_btn = QPushButton()
         help_icon_path = os.path.join(icon_dir, 'help.svg')
@@ -1178,13 +1186,33 @@ class HardwarePanelApp(QMainWindow):
 
 def main():
     """Main entry point"""
-
-    app = QApplication(sys.argv)
-    app.setStyle('Fusion')
     
     # Check if running with proper permissions
     if os.geteuid() != 0:
-        print("Warning: Not running as root. Power management may not work.")
+        print("ERROR: Hardware Panel requires root privileges.")
+        print("Please run with sudo:")
+        print("  sudo hardware-panel")
+        print("  or")
+        print("  sudo hwpanel")
+        sys.exit(1)
+    
+    # Check if installed correctly
+    icon_locations = [
+        '/usr/local/share/hardware-panel/icons',
+        '/usr/share/hardware-panel/icons',
+    ]
+    icons_found = any(os.path.exists(path) and os.listdir(path) for path in icon_locations)
+    
+    if not icons_found:
+        print("ERROR: Hardware Panel is not installed correctly.")
+        print()
+        print("Please install with sudo:")
+        print("  pip uninstall hardware-panel")
+        print("  sudo pip install hardware-panel")
+        sys.exit(1)
+
+    app = QApplication(sys.argv)
+    app.setStyle('Fusion')
     
     window = HardwarePanelApp()
     window.show()

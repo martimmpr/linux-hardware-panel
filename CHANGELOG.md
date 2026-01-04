@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.0.2] - 04-01-2026
+
+### Fixed
+- Fixed screenshot display on PyPI page
+- Fixed icons not appearing when installed via pip (system-wide installation)
+
 ## [1.0.1] - 04-01-2026
 
 ### Fixed

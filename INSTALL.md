@@ -156,10 +156,5 @@ Install kernel-tools or linux-cpupower package for your distribution.
 ## Uninstall
 
 ```bash
-pip uninstall hardware-panel
-```
-
-Or if installed system-wide:
-```bash
 sudo pip uninstall hardware-panel
 ```

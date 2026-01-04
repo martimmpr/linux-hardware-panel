@@ -1,12 +1,20 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 from pathlib import Path
+import os
 
+# README for PyPI long description
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 
+# Get icon files
+icon_files = []
+icons_dir = this_directory / "icons"
+if icons_dir.exists():
+    icon_files = [f"icons/{f.name}" for f in icons_dir.glob("*.svg")]
+
 setup(
     name="hardware-panel",
-    version="1.0.1",
+    version="1.0.2",
     author="Martim 'martimmpr' Ribeiro",
     description="Powerful system monitoring and hardware control application for Linux.",
     long_description=long_description,
@@ -19,6 +27,9 @@ setup(
     },
     license="MIT",
     py_modules=["hardware_panel"],
+    data_files=[
+        (os.path.join("share", "hardware-panel", "icons"), [os.path.join("icons", f) for f in os.listdir("icons") if f.endswith(".svg")]),
+    ],
     package_data={
         "": ["icons/*.svg"],
     },
