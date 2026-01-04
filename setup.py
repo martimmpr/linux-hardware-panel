@@ -6,7 +6,7 @@ long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 
 setup(
     name="hardware-panel",
-    version="1.0.0",
+    version="1.0.1",
     author="Martim 'martimmpr' Ribeiro",
     description="Powerful system monitoring and hardware control application for Linux.",
     long_description=long_description,

@@ -1,5 +1,16 @@
 # Change Log
 
+## [1.0.1] - 04-01-2026
+
+### Fixed
+- Fixed icon loading when installed via pip
+
+### Changed
+- Updated installation instructions to require system-wide installation
+
+### Added
+- Added screenshot to README and PyPI page
+
 ## [1.0.0] - 04-01-2026
 
 ### Added
