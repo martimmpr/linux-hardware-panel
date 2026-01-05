@@ -2,11 +2,11 @@ from setuptools import setup, find_packages
 from pathlib import Path
 import os
 
-# README for PyPI long description
+# PyPI long description
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 
-# Get icon files
+# Icon files
 icon_files = []
 icons_dir = this_directory / "icons"
 if icons_dir.exists():
@@ -14,7 +14,7 @@ if icons_dir.exists():
 
 setup(
     name="hardware-panel",
-    version="1.0.3",
+    version="1.0.4",
     author="Martim 'martimmpr' Ribeiro",
     description="Powerful system monitoring and hardware control application for Linux.",
     long_description=long_description,

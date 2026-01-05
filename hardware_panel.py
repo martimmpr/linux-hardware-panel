@@ -12,8 +12,6 @@ import pyqtgraph as pg
 import psutil
 
 class HardwareMonitor:
-    """Handles all sensor readings and history"""
-    
     def __init__(self):
         self.history_size = 60
         self.cpu_temp_history = deque(maxlen=self.history_size)
@@ -32,14 +30,12 @@ class HardwareMonitor:
         self.last_net_time = datetime.now()
         
     def get_cpu_temperature(self):
-        """Get CPU temperature in Celsius"""
-
         try:
-            # Try using sensors command
+            # Use sensors command
             result = subprocess.run(['sensors'], capture_output=True, text=True, timeout=2)
             output = result.stdout
             
-            # Look for CPU package temperature
+            # CPU package temperature
             patterns = [
                 r'Package id 0:\s+\+(\d+\.\d+)°C',
                 r'Tdie:\s+\+(\d+\.\d+)°C',
@@ -53,7 +49,7 @@ class HardwareMonitor:
                 if match:
                     return float(match.group(1))
             
-            # Try thermal_zone
+            # Use thermal_zone
             thermal_paths = [
                 '/sys/class/thermal/thermal_zone0/temp',
                 '/sys/class/thermal/thermal_zone1/temp'
@@ -72,23 +68,16 @@ class HardwareMonitor:
         return 0.0
     
     def get_cpu_usage(self):
-        """Get CPU usage percentage"""
-
         try:
-            return psutil.cpu_percent(interval=0.1)
+            return psutil.cpu_percent(interval = 0.1)
         except Exception as e:
             print(f"Error reading CPU usage: {e}")
             return 0.0
     
     def get_gpu_temperature(self):
-        """Get GPU temperature in Celsius"""
-
         try:
             # Try NVIDIA
-            result = subprocess.run(
-                ['nvidia-smi', '--query-gpu=temperature.gpu', '--format=csv,noheader,nounits'],
-                capture_output=True, text=True, timeout=2
-            )
+            result = subprocess.run(['nvidia-smi', '--query-gpu=temperature.gpu', '--format=csv,noheader,nounits'], capture_output = True, text = True, timeout = 2)
 
             if result.returncode == 0:
                 return float(result.stdout.strip())
@@ -98,6 +87,7 @@ class HardwareMonitor:
         try:
             # Try AMD via hwmon
             hwmon_paths = ['/sys/class/hwmon/hwmon0', '/sys/class/hwmon/hwmon1', '/sys/class/hwmon/hwmon2']
+
             for hwmon in hwmon_paths:
                 name_path = os.path.join(hwmon, 'name')
 
@@ -117,14 +107,9 @@ class HardwareMonitor:
         return 0.0
     
     def get_gpu_usage(self):
-        """Get GPU usage percentage"""
-
         try:
             # Try NVIDIA
-            result = subprocess.run(
-                ['nvidia-smi', '--query-gpu=utilization.gpu', '--format=csv,noheader,nounits'],
-                capture_output=True, text=True, timeout=2
-            )
+            result = subprocess.run(['nvidia-smi', '--query-gpu=utilization.gpu', '--format=csv,noheader,nounits'], capture_output = True, text = True, timeout = 2)
 
             if result.returncode == 0:
                 return float(result.stdout.strip())
@@ -134,8 +119,6 @@ class HardwareMonitor:
         return 0.0
     
     def get_ram_usage(self):
-        """Get RAM usage percentage"""
-
         try:
             return psutil.virtual_memory().percent
         except Exception as e:
@@ -143,8 +126,6 @@ class HardwareMonitor:
             return 0.0
     
     def get_swap_usage(self):
-        """Get Swap usage percentage"""
-
         try:
             return psutil.swap_memory().percent
         except Exception as e:
@@ -152,14 +133,12 @@ class HardwareMonitor:
             return 0.0
     
     def get_disk_temperature(self):
-        """Get disk temperature in Celsius"""
-
         try:
-            # Try using sensors command for NVMe
-            result = subprocess.run(['sensors'], capture_output=True, text=True, timeout=2)
+            # Use sensors command
+            result = subprocess.run(['sensors'], capture_output = True, text = True, timeout = 2)
             output = result.stdout
             
-            # Look for NVMe composite temperature
+            # NVMe composite temperature
             patterns = [
                 r'Composite:\s+\+(\d+\.\d+)°C',
                 r'temp1:\s+\+(\d+\.\d+)°C'
@@ -171,8 +150,8 @@ class HardwareMonitor:
                 if match:
                     return float(match.group(1))
             
-            # Try hddtemp as fallback for SATA drives
-            result = subprocess.run(['hddtemp', '/dev/sda'], capture_output=True, text=True, timeout=2)
+            # Use hddtemp as fallback for SATA drives
+            result = subprocess.run(['hddtemp', '/dev/sda'], capture_output = True, text = True, timeout = 2)
             match = re.search(r'(\d+)°C', result.stdout)
 
             if match:
@@ -183,8 +162,6 @@ class HardwareMonitor:
         return 0.0
     
     def get_disk_usage(self):
-        """Get disk usage percentage"""
-
         try:
             return psutil.disk_usage('/').percent
         except Exception as e:
@@ -192,8 +169,6 @@ class HardwareMonitor:
             return 0.0
     
     def get_network_speed(self):
-        """Get network download and upload speed in MB/s"""
-
         try:
             current_net_io = psutil.net_io_counters()
             current_time = datetime.now()
@@ -214,8 +189,6 @@ class HardwareMonitor:
         return 0.0, 0.0
     
     def update_all_metrics(self):
-        """Update all metrics and history"""
-
         self.timestamp_history.append(datetime.now())
         self.cpu_temp_history.append(self.get_cpu_temperature())
         self.cpu_usage_history.append(self.get_cpu_usage())
@@ -232,21 +205,14 @@ class HardwareMonitor:
 
 
 class PowerManager:
-    """Manages power profiles and automatic switching"""
-    
     def __init__(self):
         self.current_mode = "Power Saver"
         self.auto_mode_enabled = True
         self.available_governors = self._get_available_governors()
     
     def _get_available_governors(self):
-        """Get list of available CPU governors"""
-
         try:
-            result = subprocess.run(
-                ['cpupower', 'frequency-info', '-g'],
-                capture_output=True, text=True
-            )
+            result = subprocess.run(['cpupower', 'frequency-info', '-g'], capture_output = True, text = True)
 
             if result.returncode == 0:
                 # Extract governors from output
@@ -260,8 +226,6 @@ class PowerManager:
         return ['powersave', 'performance']  # Default fallback
     
     def set_power_profile(self, mode):
-        """Set power profile"""
-
         try:
             if mode == "Automatic":
                 self.auto_mode_enabled = True
@@ -275,10 +239,7 @@ class PowerManager:
             else:
                 return False
             
-            result = subprocess.run(
-                ['cpupower', 'frequency-set', '-g', governor],
-                capture_output=True, text=True
-            )
+            result = subprocess.run(['cpupower', 'frequency-set', '-g', governor], capture_output = True, text = True)
             
             if result.returncode == 0:
                 self.current_mode = mode
@@ -300,8 +261,6 @@ class PowerManager:
             return False
     
     def auto_switch_profile(self, cpu_usage, cpu_temp):
-        """Automatically switch profile based on CPU load and temperature"""
-
         if not self.auto_mode_enabled:
             return
         
@@ -321,8 +280,6 @@ class PowerManager:
 
 
 class HardwarePanelApp(QMainWindow):
-    """PyQt5 GUI main window"""
-    
     def __init__(self):
         super().__init__()
         
@@ -340,8 +297,6 @@ class HardwarePanelApp(QMainWindow):
         self.update_data()
     
     def init_ui(self):
-        """Initialize the user interface"""
-
         self.setWindowTitle("Hardware Panel")
         
         # Set window size
@@ -366,7 +321,7 @@ class HardwarePanelApp(QMainWindow):
         main_layout.setSpacing(10)
         main_layout.setContentsMargins(10, 10, 10, 10)
         
-        # Top row: Current values (left) and Power profile (right)
+        # Top section: Current values (left) and Power profile (right)
         top_layout = QHBoxLayout()
         self.create_current_values_section(top_layout)
         self.create_power_profile_section(top_layout)
@@ -376,8 +331,6 @@ class HardwarePanelApp(QMainWindow):
         self.create_graphs_section(main_layout)
     
     def set_dark_theme(self):
-        """Apply dark theme to the application"""
-
         dark_palette = QPalette()
         dark_palette.setColor(QPalette.Window, QColor(53, 53, 53))
         dark_palette.setColor(QPalette.WindowText, Qt.white)
@@ -395,7 +348,6 @@ class HardwarePanelApp(QMainWindow):
         
         self.setPalette(dark_palette)
         
-        # Style tooltips
         self.setStyleSheet("""
             QToolTip {
                 background-color: #2d2d2d;
@@ -415,21 +367,13 @@ class HardwarePanelApp(QMainWindow):
         values_layout.setSpacing(8)
         values_layout.setContentsMargins(5, 5, 5, 5)
         
-        # Try to find icons directory (works for both installed and development)
-        icon_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons')
-        if not os.path.exists(icon_dir):
-            # Fallback for system-wide installation
-            potential_paths = [
-                '/usr/share/hardware-panel/icons',
-                '/usr/local/share/hardware-panel/icons',
-                os.path.expanduser('~/.local/share/hardware-panel/icons'),
-            ]
-            for path in potential_paths:
-                if os.path.exists(path):
-                    icon_dir = path
-                    break
+        icon_locations = [
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons'),  # Development mode
+            '/usr/share/hardware-panel/icons',
+            '/usr/local/share/hardware-panel/icons',
+        ]
+        icon_dir = next((path for path in icon_locations if os.path.exists(path)), '')
         
-        # Helper function to create value row
         def create_value_row(icon_name, text_color):
             container = QWidget()
             layout = QHBoxLayout(container)
@@ -439,7 +383,6 @@ class HardwarePanelApp(QMainWindow):
             icon_label = QLabel()
             icon_path = os.path.join(icon_dir, icon_name)
             if os.path.exists(icon_path):
-                # Load SVG and render as white icon
                 pixmap = QPixmap(24, 24)
                 pixmap.fill(Qt.transparent)
                 painter = QPainter(pixmap)
@@ -447,13 +390,12 @@ class HardwarePanelApp(QMainWindow):
                 renderer.render(painter)
                 painter.end()
                 
-                # Create white version by compositing
                 image = pixmap.toImage()
                 for x in range(image.width()):
                     for y in range(image.height()):
                         pixel = image.pixelColor(x, y)
 
-                        if pixel.alpha() > 0:  # If not transparent
+                        if pixel.alpha() > 0:
                             image.setPixelColor(x, y, QColor(255, 255, 255, pixel.alpha()))
                 
                 icon_label.setPixmap(QPixmap.fromImage(image))
@@ -466,31 +408,31 @@ class HardwarePanelApp(QMainWindow):
             
             return container, value_label
         
-        # CPU (row 0)
+        # CPU
         cpu_temp_widget, self.cpu_temp_label = create_value_row('cpu.svg', '#FF6B6B')
         cpu_usage_widget, self.cpu_usage_label = create_value_row('cpu.svg', '#51CF66')
         values_layout.addWidget(cpu_temp_widget, 0, 0)
         values_layout.addWidget(cpu_usage_widget, 0, 1)
         
-        # GPU (row 1)
+        # GPU
         gpu_temp_widget, self.gpu_temp_label = create_value_row('gpu.svg', '#FF6B6B')
         gpu_usage_widget, self.gpu_usage_label = create_value_row('gpu.svg', '#51CF66')
         values_layout.addWidget(gpu_temp_widget, 1, 0)
         values_layout.addWidget(gpu_usage_widget, 1, 1)
         
-        # RAM (row 2)
+        # RAM
         ram_widget, self.ram_usage_label = create_value_row('ram.svg', '#51CF66')
         swap_widget, self.swap_usage_label = create_value_row('swap.svg', '#FFA94D')
         values_layout.addWidget(ram_widget, 2, 0)
         values_layout.addWidget(swap_widget, 2, 1)
         
-        # Disk (row 3)
+        # Disk
         disk_temp_widget, self.disk_temp_label = create_value_row('disk.svg', '#FF6B6B')
         disk_usage_widget, self.disk_usage_label = create_value_row('disk.svg', '#51CF66')
         values_layout.addWidget(disk_temp_widget, 3, 0)
         values_layout.addWidget(disk_usage_widget, 3, 1)
         
-        # Network (row 4)
+        # Network
         net_down_widget, self.net_download_label = create_value_row('download.svg', '#339AF0')
         net_up_widget, self.net_upload_label = create_value_row('upload.svg', '#FFA94D')
         values_layout.addWidget(net_down_widget, 4, 0)
@@ -525,7 +467,7 @@ class HardwarePanelApp(QMainWindow):
         self.cpu_graph.getViewBox().setLimits(xMin=0, xMax=60, yMin=0, yMax=100)
         self.cpu_graph.getViewBox().setAutoVisible(y=False)
         
-        # Add crosshair
+        # CPU crosshair
         self.cpu_vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen(color='#ADB5BD', width=1, style=Qt.DashLine))
         self.cpu_hline = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen(color='#ADB5BD', width=1, style=Qt.DashLine))
         self.cpu_vline.setVisible(False)
@@ -536,7 +478,7 @@ class HardwarePanelApp(QMainWindow):
         self.cpu_label.setVisible(False)
         self.cpu_graph.addItem(self.cpu_label)
         
-        # Create dual axis for CPU
+        # Dual axis for CPU
         self.cpu_temp_curve = self.cpu_graph.plot(pen=pg.mkPen(color='#FF6B6B', width=2))
         
         # Second Y-axis for CPU usage
@@ -572,7 +514,7 @@ class HardwarePanelApp(QMainWindow):
         self.gpu_graph.getViewBox().setLimits(xMin=0, xMax=60, yMin=0, yMax=100)
         self.gpu_graph.getViewBox().setAutoVisible(y=False)
         
-        # Add crosshair
+        # GPU crosshair
         self.gpu_vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen(color='#ADB5BD', width=1, style=Qt.DashLine))
         self.gpu_hline = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen(color='#ADB5BD', width=1, style=Qt.DashLine))
         self.gpu_vline.setVisible(False)
@@ -583,7 +525,7 @@ class HardwarePanelApp(QMainWindow):
         self.gpu_label.setVisible(False)
         self.gpu_graph.addItem(self.gpu_label)
         
-        # Create dual axis for GPU
+        # Dual axis for GPU
         self.gpu_temp_curve = self.gpu_graph.plot(pen=pg.mkPen(color='#FF6B6B', width=2))
         
         # Second Y-axis for GPU usage
@@ -628,7 +570,7 @@ class HardwarePanelApp(QMainWindow):
         self.ram_graph.getViewBox().setLimits(xMin=0, xMax=60, yMin=0, yMax=100)
         self.ram_graph.getViewBox().setAutoVisible(y=False)
         
-        # Add crosshair
+        # RAM crosshair
         self.ram_vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen(color='#ADB5BD', width=1, style=Qt.DashLine))
         self.ram_hline = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen(color='#ADB5BD', width=1, style=Qt.DashLine))
         self.ram_vline.setVisible(False)
@@ -639,7 +581,7 @@ class HardwarePanelApp(QMainWindow):
         self.ram_label.setVisible(False)
         self.ram_graph.addItem(self.ram_label)
         
-        # Create dual axis for RAM
+        # Dual axis for RAM
         self.ram_usage_curve = self.ram_graph.plot(pen=pg.mkPen(color='#51CF66', width=2))
         
         # Second Y-axis for Swap usage
@@ -675,7 +617,7 @@ class HardwarePanelApp(QMainWindow):
         self.disk_graph.getViewBox().setLimits(xMin=0, xMax=60, yMin=0, yMax=100)
         self.disk_graph.getViewBox().setAutoVisible(y=False)
         
-        # Add crosshair
+        # Disk crosshair
         self.disk_vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen(color='#ADB5BD', width=1, style=Qt.DashLine))
         self.disk_hline = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen(color='#ADB5BD', width=1, style=Qt.DashLine))
         self.disk_vline.setVisible(False)
@@ -686,7 +628,7 @@ class HardwarePanelApp(QMainWindow):
         self.disk_label.setVisible(False)
         self.disk_graph.addItem(self.disk_label)
         
-        # Create dual axis for Disk
+        # Dual axis for Disk
         self.disk_temp_curve = self.disk_graph.plot(pen=pg.mkPen(color='#FF6B6B', width=2))
         
         # Second Y-axis for Disk usage
@@ -721,7 +663,7 @@ class HardwarePanelApp(QMainWindow):
         self.net_graph.getViewBox().setLimits(xMin=0, xMax=60, yMin=0)
         self.net_graph.getViewBox().setAutoVisible(y=True)
         
-        # Add crosshair
+        # Network crosshair
         self.net_vline = pg.InfiniteLine(angle=90, movable=False, pen=pg.mkPen(color='#ADB5BD', width=1, style=Qt.DashLine))
         self.net_hline = pg.InfiniteLine(angle=0, movable=False, pen=pg.mkPen(color='#ADB5BD', width=1, style=Qt.DashLine))
         self.net_vline.setVisible(False)
@@ -732,7 +674,7 @@ class HardwarePanelApp(QMainWindow):
         self.net_label.setVisible(False)
         self.net_graph.addItem(self.net_label)
         
-        # Create dual axis for Network
+        # Dual axis for Network
         self.net_download_curve = self.net_graph.plot(pen=pg.mkPen(color='#339AF0', width=2))
         
         # Second Y-axis for Upload
@@ -783,6 +725,7 @@ class HardwarePanelApp(QMainWindow):
         updateDiskViews()
         updateRAMViews()
         updateNetViews()
+
         self.cpu_graph.getViewBox().sigResized.connect(updateCPUViews)
         self.gpu_graph.getViewBox().sigResized.connect(updateGPUViews)
         self.disk_graph.getViewBox().sigResized.connect(updateDiskViews)
@@ -790,38 +733,26 @@ class HardwarePanelApp(QMainWindow):
         self.net_graph.getViewBox().sigResized.connect(updateNetViews)
     
     def create_power_profile_section(self, parent_layout):
-        """Create power profile section with active state buttons"""
-
         power_widget = QWidget()
         power_layout = QVBoxLayout(power_widget)
         power_layout.setSpacing(8)
         power_layout.setContentsMargins(5, 5, 5, 5)
         
-        # Title with help icon
         title_layout = QHBoxLayout()
         title_label = QLabel("Power Profile")
         title_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #FFFFFF;")
         title_layout.addWidget(title_label)
         
-        # Help icon with tooltip
-        # Try to find icons directory (works for both installed and development)
-        icon_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons')
-        if not os.path.exists(icon_dir):
-            # Fallback for system-wide installation
-            potential_paths = [
-                '/usr/share/hardware-panel/icons',
-                '/usr/local/share/hardware-panel/icons',
-                os.path.expanduser('~/.local/share/hardware-panel/icons'),
-            ]
-            for path in potential_paths:
-                if os.path.exists(path):
-                    icon_dir = path
-                    break
+        icon_locations = [
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons'),  # Development mode
+            '/usr/share/hardware-panel/icons',
+            '/usr/local/share/hardware-panel/icons',
+        ]
+        icon_dir = next((path for path in icon_locations if os.path.exists(path)), '')
         
         help_btn = QPushButton()
         help_icon_path = os.path.join(icon_dir, 'help.svg')
         if os.path.exists(help_icon_path):
-            # Load SVG and render as white icon
             pixmap = QPixmap(20, 20)
             pixmap.fill(Qt.transparent)
             painter = QPainter(pixmap)
@@ -829,7 +760,6 @@ class HardwarePanelApp(QMainWindow):
             renderer.render(painter)
             painter.end()
             
-            # Create white version
             image = pixmap.toImage()
             for x in range(image.width()):
                 for y in range(image.height()):
@@ -856,15 +786,13 @@ class HardwarePanelApp(QMainWindow):
             "</div>"
         )
         help_btn.setToolTip(help_tooltip)
-        help_btn.setToolTipDuration(0)  # Show tooltip indefinitely until mouse leaves
-        # Install event filter to show tooltip faster
+        help_btn.setToolTipDuration(0)
         help_btn.installEventFilter(self)
-        self.help_btn = help_btn  # Store reference for event filter
+        self.help_btn = help_btn
         title_layout.addWidget(help_btn)
         title_layout.addStretch()
         power_layout.addLayout(title_layout)
         
-        # Mode buttons
         button_layout = QVBoxLayout()
         button_layout.setSpacing(5)
         
@@ -888,55 +816,55 @@ class HardwarePanelApp(QMainWindow):
         
         parent_layout.addWidget(power_widget, 1)
         
-        # Update button styles initially
         self.update_power_button_styles()
     
     def eventFilter(self, obj, event):
-        """Filter events to hide crosshair when mouse leaves graphs and show tooltip faster for help button"""
-
-        # Handle help button hover for instant tooltip
         if hasattr(self, 'help_btn') and obj == self.help_btn:
             if event.type() == QEvent.Enter:
                 # Show tooltip immediately on hover
                 QToolTip.showText(self.help_btn.mapToGlobal(self.help_btn.rect().bottomLeft()), self.help_btn.toolTip(), self.help_btn)
+
                 return True
             elif event.type() == QEvent.Leave:
                 QToolTip.hideText()
                 return True
         
-        # Handle graph crosshairs - hide on Leave event
+        # Hide graph crosshairs on Leave event
         if event.type() == QEvent.Leave:
             if obj == self.cpu_graph:
                 self.cpu_vline.setVisible(False)
                 self.cpu_hline.setVisible(False)
                 self.cpu_label.setVisible(False)
+
                 return True
             elif obj == self.gpu_graph:
                 self.gpu_vline.setVisible(False)
                 self.gpu_hline.setVisible(False)
                 self.gpu_label.setVisible(False)
+
                 return True
             elif obj == self.ram_graph:
                 self.ram_vline.setVisible(False)
                 self.ram_hline.setVisible(False)
                 self.ram_label.setVisible(False)
+
                 return True
             elif obj == self.disk_graph:
                 self.disk_vline.setVisible(False)
                 self.disk_hline.setVisible(False)
                 self.disk_label.setVisible(False)
+
                 return True
             elif obj == self.net_graph:
                 self.net_vline.setVisible(False)
                 self.net_hline.setVisible(False)
                 self.net_label.setVisible(False)
+
                 return True
             
         return super().eventFilter(obj, event)
     
     def hideAllCrosshairs(self):
-        """Hide all crosshair lines and labels"""
-
         self.cpu_vline.setVisible(False)
         self.cpu_hline.setVisible(False)
         self.cpu_label.setVisible(False)
@@ -954,8 +882,6 @@ class HardwarePanelApp(QMainWindow):
         self.net_label.setVisible(False)
     
     def mouseMoved(self, evt, graph_type):
-        """Handle mouse move events on graphs"""
-
         pos = evt[0]
         
         if graph_type == 'cpu':
@@ -1082,16 +1008,17 @@ class HardwarePanelApp(QMainWindow):
         active_green_style = "font-size: 13px; padding: 8px; background-color: #51CF66; color: #000000; font-weight: bold;"
         active_red_style = "font-size: 13px; padding: 8px; background-color: #FF6B6B; color: #000000; font-weight: bold;"
         
-        # Get current actual mode from power manager
+        # Get current actual mode
         current_mode = self.power_manager.current_mode
         
         if self.power_manager.auto_mode_enabled:
-            # Auto mode is active, show with current profile in parentheses
+            # Automatic mode - current profile in parentheses
             self.auto_btn.setText(f"Automatic Mode ({current_mode})")
-            # Use green for Power Saver, red for Performance
+
+            # Green for Power Saver
             if current_mode == "Power Saver":
                 self.auto_btn.setStyleSheet(active_green_style)
-            else:  # Performance
+            else:  # Red for Performance
                 self.auto_btn.setStyleSheet(active_red_style)
             self.power_saver_btn.setStyleSheet(inactive_style)
             self.performance_btn.setStyleSheet(inactive_style)
@@ -1107,8 +1034,6 @@ class HardwarePanelApp(QMainWindow):
             self.performance_btn.setStyleSheet(active_red_style)
     
     def get_temp_color(self, temp):
-        """Get color for temperature value"""
-
         if temp < 60:
             return '#51CF66'
         elif temp < 75:
@@ -1117,8 +1042,6 @@ class HardwarePanelApp(QMainWindow):
             return '#FF6B6B'
     
     def get_usage_color(self, usage):
-        """Get color for usage percentage value"""
-
         if usage < 50:
             return '#51CF66'
         elif usage < 80:
@@ -1127,8 +1050,6 @@ class HardwarePanelApp(QMainWindow):
             return '#FF6B6B'
     
     def set_power_mode(self, mode):
-        """Set power mode"""
-
         try:
             if self.power_manager.set_power_profile(mode):
                 self.update_power_button_styles()
@@ -1143,8 +1064,6 @@ class HardwarePanelApp(QMainWindow):
             QMessageBox.critical(self, "Error", f"Failed to set power mode: {e}")
     
     def update_data(self):
-        """Update all data and UI"""
-
         # Update hardware monitor
         self.hardware_monitor.update_all_metrics()
         
@@ -1197,29 +1116,29 @@ class HardwarePanelApp(QMainWindow):
         self.net_download_label.setText(f"{net_download:.2f} MB/s")
         self.net_upload_label.setText(f"{net_upload:.2f} MB/s")
         
-        # Update graphs - CPU (dual axis with temperature and usage)
+        # Update graphs - CPU
         self.cpu_temp_curve.setData(list(self.hardware_monitor.cpu_temp_history))
         self.cpu_usage_curve.setData(list(range(len(self.hardware_monitor.cpu_usage_history))), list(self.hardware_monitor.cpu_usage_history))
         
-        # Update GPU graph (dual axis with temperature and usage)
+        # Update GPU graph
         self.gpu_temp_curve.setData(list(self.hardware_monitor.gpu_temp_history))
         self.gpu_usage_curve.setData(list(range(len(self.hardware_monitor.gpu_usage_history))), list(self.hardware_monitor.gpu_usage_history))
         
-        # Update RAM graph (dual axis with RAM and Swap)
+        # Update RAM graph
         self.ram_usage_curve.setData(list(self.hardware_monitor.ram_usage_history))
         self.swap_usage_curve.setData(list(range(len(self.hardware_monitor.swap_usage_history))), list(self.hardware_monitor.swap_usage_history))
         
-        # Update Disk graph (dual axis with temperature and usage)
+        # Update Disk graph
         self.disk_temp_curve.setData(list(self.hardware_monitor.disk_temp_history))
         self.disk_usage_curve.setData(list(range(len(self.hardware_monitor.disk_usage_history))), list(self.hardware_monitor.disk_usage_history))
         
-        # Update Network graph with dynamic KB/s or MB/s scale
+        # Update Network graph with dynamic scale
         if self.hardware_monitor.net_download_history or self.hardware_monitor.net_upload_history:
             max_download = max(self.hardware_monitor.net_download_history) if self.hardware_monitor.net_download_history else 0
             max_upload = max(self.hardware_monitor.net_upload_history) if self.hardware_monitor.net_upload_history else 0
             max_speed = max(max_download, max_upload)
             
-            # Use KB/s if max speed is less than 1 MB/s, otherwise use MB/s
+            # KB/s if max speed is less than 1 MB/s, otherwise use MB/s
             if max_speed < 1:
                 # Convert to KB/s
                 download_data = [d * 1024 for d in self.hardware_monitor.net_download_history]
@@ -1255,8 +1174,6 @@ class HardwarePanelApp(QMainWindow):
 
 
 def main():
-    """Main entry point"""
-    
     # Check if running with proper permissions
     if os.geteuid() != 0:
         print("ERROR: Hardware Panel requires root privileges.")
@@ -1268,6 +1185,7 @@ def main():
     
     # Check if installed correctly
     icon_locations = [
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons'),  # Development mode
         '/usr/local/share/hardware-panel/icons',
         '/usr/share/hardware-panel/icons',
     ]

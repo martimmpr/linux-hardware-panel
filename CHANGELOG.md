@@ -1,5 +1,13 @@
 # Change Log
 
+## [1.0.4] - 05-01-2026
+
+### Changed
+- Code cleanup
+- Improved development environment
+- Added Python cache files to .gitignore
+- Updated screenshot to reflect current application state
+
 ## [1.0.3] - 04-01-2026
 
 ### Changed
