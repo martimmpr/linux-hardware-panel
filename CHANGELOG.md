@@ -1,5 +1,10 @@
 # Change Log
 
+## [1.0.5] - 05-01-2026
+
+### Added
+- Hardware information display showing component names and specifications alongside metrics
+
 ## [1.0.4] - 05-01-2026
 
 ### Changed

@@ -14,7 +14,7 @@ if icons_dir.exists():
 
 setup(
     name="hardware-panel",
-    version="1.0.4",
+    version="1.0.5",
     author="Martim 'martimmpr' Ribeiro",
     description="Powerful system monitoring and hardware control application for Linux.",
     long_description=long_description,

@@ -29,6 +29,16 @@ class HardwareMonitor:
         self.last_net_io = psutil.net_io_counters()
         self.last_net_time = datetime.now()
         
+    def get_cpu_name(self):
+        try:
+            with open('/proc/cpuinfo', 'r') as f:
+                for line in f:
+                    if 'model name' in line:
+                        return line.split(':')[1].strip()
+        except Exception as e:
+            print(f"Error reading CPU name: {e}")
+        return "Unknown CPU"
+    
     def get_cpu_temperature(self):
         try:
             # Use sensors command
@@ -74,6 +84,33 @@ class HardwareMonitor:
             print(f"Error reading CPU usage: {e}")
             return 0.0
     
+    def get_gpu_name(self):
+        try:
+            # Try NVIDIA
+            result = subprocess.run(['nvidia-smi', '--query-gpu=name', '--format=csv,noheader'], capture_output=  True, text = True, timeout = 2)
+
+            if result.returncode == 0:
+                return result.stdout.strip()
+        except:
+            pass
+        
+        try:
+            # Try AMD via lspci
+            result = subprocess.run(['lspci'], capture_output=  True, text = True, timeout = 2)
+
+            for line in result.stdout.split('\n'):
+                if 'VGA compatible controller' in line or '3D controller' in line:
+                    if 'AMD' in line or 'ATI' in line or 'Radeon' in line:
+                        # Extract GPU name
+                        parts = line.split(': ')
+
+                        if len(parts) > 1:
+                            return parts[1].strip()
+        except:
+            pass
+        
+        return None
+    
     def get_gpu_temperature(self):
         try:
             # Try NVIDIA
@@ -118,6 +155,80 @@ class HardwareMonitor:
         
         return 0.0
     
+    def get_ram_info(self):
+        try:
+            # Try dmidecode for detailed RAM info
+            result = subprocess.run(['dmidecode', '-t', 'memory'], capture_output=True, text=True, timeout=2)
+            if result.returncode == 0:
+                output = result.stdout
+                
+                # Split by Memory Device entries
+                devices = output.split('Memory Device')
+                installed_modules = []
+                
+                for device in devices[1:]:
+                    # Check if module is installed
+                    if 'No Module Installed' in device:
+                        continue
+                    
+                    # Extract size
+                    size_match = re.search(r'Size:\s+(\d+)\s+(GB|MB)', device)
+                    if not size_match:
+                        continue
+                    
+                    size_value = int(size_match.group(1))
+                    size_unit = size_match.group(2)
+                    
+                    # Convert to GB if needed
+                    if size_unit == 'MB':
+                        size_value = size_value // 1024
+                    
+                    # Extract type
+                    type_match = re.search(r'Type:\s+(DDR\d+)', device)
+                    ram_type = type_match.group(1) if type_match else 'Unknown'
+                    
+                    # Extract rated speed
+                    rated_speed_match = re.search(r'Speed:\s+(\d+)\s+MT/s', device)
+                    rated_speed = rated_speed_match.group(1) if rated_speed_match else None
+                    
+                    # Extract configured/actual speed
+                    configured_speed_match = re.search(r'Configured Memory Speed:\s+(\d+)\s+MT/s', device)
+                    configured_speed = configured_speed_match.group(1) if configured_speed_match else None
+                    
+                    installed_modules.append({
+                        'size': size_value,
+                        'type': ram_type,
+                        'rated_speed': rated_speed,
+                        'configured_speed': configured_speed
+                    })
+                
+                if installed_modules:
+                    # Get the most common configuration
+                    module_count = len(installed_modules)
+                    module_size = installed_modules[0]['size']
+                    ram_type = installed_modules[0]['type']
+                    rated_speed = installed_modules[0]['rated_speed']
+                    configured_speed = installed_modules[0]['configured_speed']
+                    
+                    # Format RAM string
+                    if rated_speed and configured_speed and rated_speed != configured_speed:
+                        return f"{module_count}x {module_size}GB {ram_type}-{rated_speed} ({configured_speed} MT/s)"
+                    elif configured_speed:
+                        return f"{module_count}x {module_size}GB {ram_type}-{configured_speed} MT/s"
+                    elif rated_speed:
+                        return f"{module_count}x {module_size}GB {ram_type}-{rated_speed} MT/s"
+                    else:
+                        return f"{module_count}x {module_size}GB {ram_type}"
+        except:
+            pass
+        
+        # Fallback to basic info
+        try:
+            total_ram_gb = psutil.virtual_memory().total / (1024**3)
+            return f"{total_ram_gb:.0f}GB RAM"
+        except:
+            return "RAM"
+    
     def get_ram_usage(self):
         try:
             return psutil.virtual_memory().percent
@@ -131,6 +242,25 @@ class HardwareMonitor:
         except Exception as e:
             print(f"Error reading Swap usage: {e}")
             return 0.0
+    
+    def get_disk_info(self):
+        try:
+            # Get disk name from lsblk
+            result = subprocess.run(['lsblk', '-d', '-o', 'NAME,MODEL'], capture_output = True, text = True, timeout =2 )
+
+            if result.returncode == 0:
+                lines = result.stdout.strip().split('\n')
+
+                for line in lines[1:]:
+                    parts = line.split()
+
+                    if len(parts) >= 2 and ('nvme' in parts[0] or 'sd' in parts[0]):
+                        model = ' '.join(parts[1:])
+                        return model
+        except:
+            pass
+        
+        return "Disk"
     
     def get_disk_temperature(self):
         try:
@@ -202,7 +332,6 @@ class HardwareMonitor:
         download, upload = self.get_network_speed()
         self.net_download_history.append(download)
         self.net_upload_history.append(upload)
-
 
 class PowerManager:
     def __init__(self):
@@ -278,13 +407,18 @@ class PowerManager:
         except Exception as e:
             print(f"Error in auto switch: {e}")
 
-
 class HardwarePanelApp(QMainWindow):
     def __init__(self):
         super().__init__()
         
         self.hardware_monitor = HardwareMonitor()
         self.power_manager = PowerManager()
+        
+        # Get hardware info once
+        self.cpu_name = self.hardware_monitor.get_cpu_name()
+        self.gpu_name = self.hardware_monitor.get_gpu_name()
+        self.ram_info = self.hardware_monitor.get_ram_info()
+        self.disk_info = self.hardware_monitor.get_disk_info()
         
         self.init_ui()
         
@@ -363,7 +497,7 @@ class HardwarePanelApp(QMainWindow):
         """Create current values section with icons"""
 
         values_widget = QWidget()
-        values_layout = QGridLayout(values_widget)
+        values_layout = QVBoxLayout(values_widget)
         values_layout.setSpacing(8)
         values_layout.setContentsMargins(5, 5, 5, 5)
         
@@ -374,12 +508,7 @@ class HardwarePanelApp(QMainWindow):
         ]
         icon_dir = next((path for path in icon_locations if os.path.exists(path)), '')
         
-        def create_value_row(icon_name, text_color):
-            container = QWidget()
-            layout = QHBoxLayout(container)
-            layout.setContentsMargins(0, 0, 0, 0)
-            layout.setSpacing(5)
-            
+        def create_icon(icon_name):
             icon_label = QLabel()
             icon_path = os.path.join(icon_dir, icon_name)
             if os.path.exists(icon_path):
@@ -394,49 +523,67 @@ class HardwarePanelApp(QMainWindow):
                 for x in range(image.width()):
                     for y in range(image.height()):
                         pixel = image.pixelColor(x, y)
-
                         if pixel.alpha() > 0:
                             image.setPixelColor(x, y, QColor(255, 255, 255, pixel.alpha()))
                 
                 icon_label.setPixmap(QPixmap.fromImage(image))
-            layout.addWidget(icon_label)
+            return icon_label
+        
+        def create_info_row(icon_name):
+            container = QWidget()
+            layout = QHBoxLayout(container)
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(8)
             
-            value_label = QLabel("0")
-            value_label.setStyleSheet(f"color: {text_color}; font-size: 13px; font-weight: bold;")
-            layout.addWidget(value_label)
+            icon = create_icon(icon_name)
+            layout.addWidget(icon)
+            
+            label = QLabel()
+            label.setTextFormat(Qt.RichText)
+            label.setStyleSheet("color: #FFFFFF; font-size: 13px;")
+            layout.addWidget(label)
             layout.addStretch()
             
-            return container, value_label
+            return container, label
+        
+        # Grid for CPU, GPU, RAM, Disk (1 column x 4 rows)
+        hardware_grid = QGridLayout()
+        hardware_grid.setSpacing(8)
+        hardware_grid.setContentsMargins(0, 0, 0, 0)
         
         # CPU
-        cpu_temp_widget, self.cpu_temp_label = create_value_row('cpu.svg', '#FF6B6B')
-        cpu_usage_widget, self.cpu_usage_label = create_value_row('cpu.svg', '#51CF66')
-        values_layout.addWidget(cpu_temp_widget, 0, 0)
-        values_layout.addWidget(cpu_usage_widget, 0, 1)
+        cpu_container, self.cpu_info_label = create_info_row('cpu.svg')
+        hardware_grid.addWidget(cpu_container, 0, 0)
         
         # GPU
-        gpu_temp_widget, self.gpu_temp_label = create_value_row('gpu.svg', '#FF6B6B')
-        gpu_usage_widget, self.gpu_usage_label = create_value_row('gpu.svg', '#51CF66')
-        values_layout.addWidget(gpu_temp_widget, 1, 0)
-        values_layout.addWidget(gpu_usage_widget, 1, 1)
+        gpu_container, self.gpu_info_label = create_info_row('gpu.svg')
+        hardware_grid.addWidget(gpu_container, 1, 0)
         
         # RAM
-        ram_widget, self.ram_usage_label = create_value_row('ram.svg', '#51CF66')
-        swap_widget, self.swap_usage_label = create_value_row('swap.svg', '#FFA94D')
-        values_layout.addWidget(ram_widget, 2, 0)
-        values_layout.addWidget(swap_widget, 2, 1)
+        ram_container, self.ram_info_label = create_info_row('ram.svg')
+        hardware_grid.addWidget(ram_container, 2, 0)
         
         # Disk
-        disk_temp_widget, self.disk_temp_label = create_value_row('disk.svg', '#FF6B6B')
-        disk_usage_widget, self.disk_usage_label = create_value_row('disk.svg', '#51CF66')
-        values_layout.addWidget(disk_temp_widget, 3, 0)
-        values_layout.addWidget(disk_usage_widget, 3, 1)
+        disk_container, self.disk_info_label = create_info_row('disk.svg')
+        hardware_grid.addWidget(disk_container, 3, 0)
         
-        # Network
-        net_down_widget, self.net_download_label = create_value_row('download.svg', '#339AF0')
-        net_up_widget, self.net_upload_label = create_value_row('upload.svg', '#FFA94D')
-        values_layout.addWidget(net_down_widget, 4, 0)
-        values_layout.addWidget(net_up_widget, 4, 1)
+        values_layout.addLayout(hardware_grid)
+        
+        # Grid for Network (2 columns x 1 row)
+        network_grid = QGridLayout()
+        network_grid.setContentsMargins(0, 0, 0, 0)
+        network_grid.setSpacing(5)
+        
+        # Network Download
+        net_down_container, self.net_download_info_label = create_info_row('download.svg')
+        network_grid.addWidget(net_down_container, 0, 0)
+        
+        # Network Upload
+        net_up_container, self.net_upload_info_label = create_info_row('upload.svg')
+        network_grid.addWidget(net_up_container, 0, 1)
+        
+        values_layout.addLayout(network_grid)
+        values_layout.addStretch()
         
         parent_layout.addWidget(values_widget, 1)
     
@@ -1048,6 +1195,14 @@ class HardwarePanelApp(QMainWindow):
             return '#FFA94D'
         else:
             return '#FF6B6B'
+        
+    def get_disk_usage_color(self, usage):
+        if usage < 50:
+            return '#51CF66'
+        elif usage < 75:
+            return '#FFA94D'
+        else:
+            return '#FF6B6B'
     
     def set_power_mode(self, mode):
         try:
@@ -1079,7 +1234,7 @@ class HardwarePanelApp(QMainWindow):
         net_download = self.hardware_monitor.net_download_history[-1] if self.hardware_monitor.net_download_history else 0
         net_upload = self.hardware_monitor.net_upload_history[-1] if self.hardware_monitor.net_upload_history else 0
         
-        # Update labels with compact format and dynamic colors
+        # Update labels with detailed format
         cpu_temp_color = self.get_temp_color(cpu_temp)
         cpu_usage_color = self.get_usage_color(cpu_usage)
         gpu_temp_color = self.get_temp_color(gpu_temp)
@@ -1087,34 +1242,54 @@ class HardwarePanelApp(QMainWindow):
         ram_usage_color = self.get_usage_color(ram_usage)
         swap_usage_color = self.get_usage_color(swap_usage)
         disk_temp_color = self.get_temp_color(disk_temp)
-        disk_usage_color = self.get_usage_color(disk_usage)
+        disk_usage_color = self.get_disk_usage_color(disk_usage)
         
-        self.cpu_temp_label.setText(f"{cpu_temp:.1f}°C")
-        self.cpu_temp_label.setStyleSheet(f"color: {cpu_temp_color}; font-size: 13px; font-weight: bold;")
+        # CPU: Name + (Temp Cº, Usage%)
+        self.cpu_info_label.setText(
+            f"<span style='color:#FFFFFF; font-weight: 600;'>{self.cpu_name}</span> "
+            f"(<span style='color:{cpu_temp_color}; font-weight: bold;'>{cpu_temp:.1f}°C</span> / "
+            f"<span style='color:{cpu_usage_color}; font-weight: bold;'>{cpu_usage:.1f}%</span>)"
+        )
         
-        self.cpu_usage_label.setText(f"{cpu_usage:.1f}%")
-        self.cpu_usage_label.setStyleSheet(f"color: {cpu_usage_color}; font-size: 13px; font-weight: bold;")
+        # GPU: Name + (Temp Cº, Usage%)
+        if self.gpu_name:
+            self.gpu_info_label.setText(
+                f"<span style='color:#FFFFFF; font-weight: 600;'>{self.gpu_name}</span> "
+                f"(<span style='color:{gpu_temp_color}; font-weight: bold;'>{gpu_temp:.1f}°C</span> / "
+                f"<span style='color:{gpu_usage_color}; font-weight: bold;'>{gpu_usage:.1f}%</span>)"
+            )
+        else:
+            self.gpu_info_label.setText("<span style='color:#868E96;'>No GPU detected</span>")
         
-        self.gpu_temp_label.setText(f"{gpu_temp:.1f}°C")
-        self.gpu_temp_label.setStyleSheet(f"color: {gpu_temp_color}; font-size: 13px; font-weight: bold;")
+        # RAM: Info + (Usage% / Swap%)
+        self.ram_info_label.setText(
+            f"<span style='color:#FFFFFF; font-weight: 600;'>{self.ram_info}</span> "
+            f"(<span style='color:{ram_usage_color}; font-weight: bold;'>{ram_usage:.1f}%</span> / "
+            f"<span style='color:{swap_usage_color}; font-weight: bold;'>{swap_usage:.1f}%</span>)"
+        )
         
-        self.gpu_usage_label.setText(f"{gpu_usage:.1f}%")
-        self.gpu_usage_label.setStyleSheet(f"color: {gpu_usage_color}; font-size: 13px; font-weight: bold;")
+        # Disk: Name + (Used/Total GB, Temp Cº, Usage%)
+        disk_total = psutil.disk_usage('/').total / (1024**3)
+        disk_used = psutil.disk_usage('/').used / (1024**3)
+        self.disk_info_label.setText(
+            f"<span style='color:#FFFFFF; font-weight: 600;'>{self.disk_info}</span> "
+            f"(<span style='color:{disk_usage_color}; font-weight: bold;'>{disk_used:.0f}/{disk_total:.0f}GB</span>, "
+            f"<span style='color:{disk_temp_color}; font-weight: bold;'>{disk_temp:.1f}°C</span>, "
+            f"<span style='color:{disk_usage_color}; font-weight: bold;'>{disk_usage:.1f}%</span>)"
+        )
         
-        self.ram_usage_label.setText(f"{ram_usage:.1f}%")
-        self.ram_usage_label.setStyleSheet(f"color: {ram_usage_color}; font-size: 13px; font-weight: bold;")
-        
-        self.swap_usage_label.setText(f"{swap_usage:.1f}%")
-        self.swap_usage_label.setStyleSheet(f"color: {swap_usage_color}; font-size: 13px; font-weight: bold;")
-        
-        self.disk_temp_label.setText(f"{disk_temp:.1f}°C")
-        self.disk_temp_label.setStyleSheet(f"color: {disk_temp_color}; font-size: 13px; font-weight: bold;")
-        
-        self.disk_usage_label.setText(f"{disk_usage:.1f}%")
-        self.disk_usage_label.setStyleSheet(f"color: {disk_usage_color}; font-size: 13px; font-weight: bold;")
-        
-        self.net_download_label.setText(f"{net_download:.2f} MB/s")
-        self.net_upload_label.setText(f"{net_upload:.2f} MB/s")
+        # Network: Download + Upload (dynamic MB/s or KB/s)
+        max_net_speed = max(net_download, net_upload)
+        if max_net_speed < 1:
+            # Use KB/s
+            download_kb = net_download * 1024
+            upload_kb = net_upload * 1024
+            self.net_download_info_label.setText(f"<span style='color:#339AF0; font-weight: bold;'>{download_kb:.2f} KB/s</span>")
+            self.net_upload_info_label.setText(f"<span style='color:#FFA94D; font-weight: bold;'>{upload_kb:.2f} KB/s</span>")
+        else:
+            # Use MB/s
+            self.net_download_info_label.setText(f"<span style='color:#339AF0; font-weight: bold;'>{net_download:.2f} MB/s</span>")
+            self.net_upload_info_label.setText(f"<span style='color:#FFA94D; font-weight: bold;'>{net_upload:.2f} MB/s</span>")
         
         # Update graphs - CPU
         self.cpu_temp_curve.setData(list(self.hardware_monitor.cpu_temp_history))
