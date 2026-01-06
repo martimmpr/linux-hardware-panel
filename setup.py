@@ -14,7 +14,7 @@ if icons_dir.exists():
 
 setup(
     name="hardware-panel",
-    version="1.0.5",
+    version="1.0.6",
     author="Martim 'martimmpr' Ribeiro",
     description="Powerful system monitoring and hardware control application for Linux.",
     long_description=long_description,
@@ -26,6 +26,7 @@ setup(
         "Changelog": "https://github.com/martimmpr/linux-hardware-panel/blob/main/CHANGELOG.md",
     },
     license="MIT",
+    packages=find_packages(),
     py_modules=["hardware_panel"],
     data_files=[
         (os.path.join("share", "hardware-panel", "icons"), [os.path.join("icons", f) for f in os.listdir("icons") if f.endswith(".svg")]),

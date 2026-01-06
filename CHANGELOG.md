@@ -1,5 +1,10 @@
 # Change Log
 
+## [1.0.6] - 06-01-2026
+
+### Changed
+- Refactored codebase: separated monolithic file into modular structure for better organization and maintainability
+
 ## [1.0.5] - 05-01-2026
 
 ### Added
